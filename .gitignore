@@ -1,0 +1,6 @@
+# Word / Office lock files
+~$*
+
+# OS artifacts
+Thumbs.db
+.DS_Store

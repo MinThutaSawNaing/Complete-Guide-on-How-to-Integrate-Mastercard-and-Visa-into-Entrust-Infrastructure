@@ -1,0 +1,30 @@
+Full Guide on preparing or configuring the Entrust Software for Master or Visa
+Token Table Configuration
+Firstly, we need to make sure the client will use separate token table for Testing and Live. Some of the clients use everything in one token table. It is not a bad thing but it is not practical. We need to make two separate token tables.
+There are total of three portals in Entrust Key Manager portal, EMV profile manager portal and Card Wizard portal. Our mission is to use all of them. First, let’s create a token table.
+To create a new token table, we need to go to Key Manager Portal of Entrust. 
+Please follow these steps,
+Entrust Key Manager Portal > Setup > HSM configurations > Right click on HSM and choose login > Create a new token table > Name the table.
+After that, you successfully made a new token table. 
+Next step is to make Issuer_PK (Public Key that will use to make CA request) and Issuer_SK (Private key). This step is really important since 80% of CA requests failed on this step. To make a new key pair. We need to follow this guide.
+Entrust Key Manager Portal > Home > Choose the right token table > Login > Login as Security Officer > Click Generate Key Pair from Side bar > Choose any RSA based Key Type > 1976 bits key length (Master Card) > Owner (Type the Bank’s BIN Number) > Version 06 (LIVE) or EF (UAT) > Usages (Encrypt, Wrap, Verify) > Attributes (Extractable, Exportable and Deletable) > Exponent 03 > Generate the key.
+Both Issuer_PK and SK have the same guide just a different name. After that, we need to create a CA request certificate to submit to Master Card. Please follow this guide.
+Key Manager Portal > Certificates > Request a certificate > Master Card > Choose the Public Key we just created > Generate a request certificate (ZIP).
+Then, you can give it to bank. Bank will submit it to Master Card and Master card will reply with issuer certificate (.cEF). However, most of the bank think this is the all it need to make a master card but wrong. You still need two separate files .hep and .sep. Both can download from Master Card Portal. Make sure you get
+* Issuer Certificate (.cEF)
+* .hep
+* .sep
+HEP and SEP will be used to create a CA certificate in Entrust portal. Once you got all three of them. Follow this guide.
+Key Manager Portal > Import certificate > CA Certificate > Choose both .hep and sep > Import the certificate.
+After that, you must import the issuer certificate too. 
+Key Manager Portal > Import Certificate > Issuer Certificate > Choose .cEF > Import the certificate.
+Then, 50% is done. Next, you have to request and import the necessary keys into the token table. Don’t worry Entrust will tell you which keys you will need to configure. Once you got the keys, you can just ask the bank and bank will generate them with HOST. 
+Note: Please tell bank to generate 2DES keys with two components cause Entrust need at least two components to import a key.
+Once you got the keys, 
+Key Manager Portal > Import secret key or key pair > Import key with components > Type the plain key components in > Make it two times > Generate key.
+After that, entrust will provide you with EMV profile file and PQDF tool files. They are very easy to import just follow their guidelines. You might need a little tunes on configurations files based on your customer cards.
+Thanks.
+
+
+
+
