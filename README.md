@@ -13,9 +13,9 @@
 
 *A fully styled, interactive HTML/CSS/JavaScript edition of the guide — dark/light mode, live progress bar, animated delivery checklist and more.*
 
-</div>
+**📥 Prefer offline? [Download the PDF version of this guide](./Entrust-Mastercard-Visa-Integration-Guide.pdf)**
 
-> 💡 **Tip:** enable **GitHub Pages** (Settings → Pages → Deploy from branch → `main` / root) to publish `index.html` as a live website, then share the link instead of the raw repo.
+</div>
 
 ---
 
@@ -129,6 +129,6 @@ Entrust provides the **EMV profile file** and **PQDF tool files** — import the
 
 **Made with ❤️ by [MinThutaSawNaing](https://github.com/MinThutaSawNaing)**
 
-🌐 [Interactive HTML Guide](./index.html) · 📄 [Original Field Notes (.txt)](<./Full Guide on preparing or configuring the Entrust Software for Master or Visa.txt>)
+🌐 [Interactive HTML Guide](./index.html) · 📥 [PDF Download](./Entrust-Mastercard-Visa-Integration-Guide.pdf) · 📄 [Original Field Notes (.txt)](<./Full Guide on preparing or configuring the Entrust Software for Master or Visa.txt>)
 
 </div>

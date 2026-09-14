@@ -173,6 +173,31 @@ kbd{font-family:var(--font-code);background:var(--code-bg);border:1px solid var(
 
 
 </style>
+
+<style media="print">
+/* ---------- print / PDF layout ---------- */
+[ data-theme="light" ], [ data-theme="dark" ]{
+  --bg:#ffffff; --bg2:#f6f8fb; --panel:#ffffff; --panel2:#f6f8fb;
+  --text:#1c2430; --muted:#4a5a70; --border:#c9d4e4;
+  --accent:#0b5cad; --good:#1a7f37; --warn:#9a6700; --bad:#cf222e;
+  --code-bg:#f2f5fa; --shadow:none;
+}
+html{scroll-padding-top:0}
+body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+nav,#progress,#toTop,.toc,.copy-btn,.cta,.theme-btn{display:none !important}
+.hero{padding:46px 20px 34px}
+.stats{margin-top:26px}
+.wrap{display:block;max-width:100%;padding:30px 10px 0}
+.reveal{opacity:1 !important;transform:none !important}
+section{margin-bottom:34px}
+h2.title{break-after:avoid;page-break-after:avoid}
+h3{break-after:avoid;page-break-after:avoid}
+.card,.callout,.note,.tip,.tbl-wrap,.codeblock,.stat,.pipe-step,.checklist li{break-inside:avoid;page-break-inside:avoid}
+.tbl-wrap{box-shadow:none}
+table{min-width:0}
+.codeblock pre{box-shadow:none}
+@page{margin:13mm 12mm}
+</style>
 </head>
 <body>
 
@@ -209,6 +234,7 @@ kbd{font-family:var(--font-code);background:var(--code-bg);border:1px solid var(
     <div class="cta">
       <a class="btn primary" href="#step1">🚀 Start the Guide</a>
       <a class="btn ghost" href="#checklist">📋 Jump to Checklist</a>
+      <a class="btn ghost" href="Entrust-Mastercard-Visa-Integration-Guide.pdf" download>📥 Download PDF</a>
     </div>
   </div>
 </header>
