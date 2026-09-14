@@ -129,6 +129,6 @@ Entrust provides the **EMV profile file** and **PQDF tool files** — import the
 
 **Made with ❤️ by [MinThutaSawNaing](https://github.com/MinThutaSawNaing)**
 
-🌐 [Interactive HTML Guide](./index.html) · 📥 [PDF Download](./Entrust-Mastercard-Visa-Integration-Guide.pdf) · 📄 [Original Field Notes (.txt)](<./Full Guide on preparing or configuring the Entrust Software for Master or Visa.txt>)
+🌐 [Interactive HTML Guide](./index.html) · 📥 [PDF Download](./Entrust-Mastercard-Visa-Integration-Guide.pdf) · 📐 [PDF source document](./print-guide.html) · 📄 [Original Field Notes (.txt)](<./Full Guide on preparing or configuring the Entrust Software for Master or Visa.txt>)
 
 </div>

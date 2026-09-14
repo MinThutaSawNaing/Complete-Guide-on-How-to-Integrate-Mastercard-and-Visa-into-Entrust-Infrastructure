@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Integrating Mastercard and Visa into Entrust Infrastructure — Implementation Guide</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 18mm 18mm; }
+  :root{
+    --ink:#111418; --muted:#4c5460; --rule:#c8cfd8; --rule-strong:#1b2b45; --light:#f4f6f9;
+  }
+  *{box-sizing:border-box}
+  html{font-size:10.5pt}
+  body{
+    font-family:'Inter','Segoe UI',Arial,sans-serif; color:var(--ink); line-height:1.5;
+    margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  h1,h2,h3,h4{font-weight:700; line-height:1.25; break-after:avoid; page-break-after:avoid}
+  p{margin:0 0 8pt}
+  a{color:var(--ink); text-decoration:none}
+
+  /* ---- title block ---- */
+  .doc-head{border-bottom:2.5pt solid var(--rule-strong); padding-bottom:10pt; margin-bottom:14pt}
+  .doc-head .org{font-size:8.5pt; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:8pt}
+  .doc-head h1{font-size:19pt; margin:0 0 4pt}
+  .doc-head .subtitle{font-size:11pt; color:var(--muted); margin:0}
+  h2{font-size:13pt; margin:18pt 0 7pt; padding-bottom:3pt; border-bottom:.75pt solid var(--rule)}
+  h3{font-size:11pt; margin:13pt 0 5pt}
+  h4{font-size:10.5pt; margin:11pt 0 4pt; font-weight:600}
+
+  /* ---- tables ---- */
+  table{width:100%; border-collapse:collapse; margin:6pt 0 12pt; font-size:9.5pt}
+  th,td{border:.5pt solid var(--rule); padding:4.5pt 6pt; text-align:left; vertical-align:top}
+  th{background:var(--light); font-weight:700; color:#0d1626}
+  thead{display:table-header-group}
+  tr{break-inside:avoid; page-break-inside:avoid}
+  table.control{font-size:9.5pt; margin-bottom:16pt}
+  table.control th{width:33%; background:#fff}
+  td.num,th.num{width:26pt; text-align:center}
+
+  /* ---- procedure paths ---- */
+  pre{
+    font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:8.8pt; line-height:1.5;
+    background:var(--light); border:.5pt solid var(--rule); border-left:2pt solid var(--rule-strong);
+    padding:7pt 9pt; margin:5pt 0 11pt; white-space:pre-wrap; break-inside:avoid; page-break-inside:avoid;
+  }
+  code{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:9pt}
+
+  /* ---- notes (plain, no boxes/cards) ---- */
+  .note{margin:6pt 0 10pt; padding-left:10pt; border-left:2pt solid var(--rule-strong); break-inside:avoid}
+  .note .lbl{font-weight:700}
+  .note.warning{border-left-color:#8a1f11}
+  .note.warning .lbl{color:#8a1f11}
+
+  ol,ul{margin:0 0 10pt; padding-left:16pt}
+  li{margin-bottom:3pt; break-inside:avoid}
+  ul.plain{list-style:none; padding-left:0}
+  ul.plain li{padding-left:22pt; text-indent:-22pt}
+  ul.plain li::before{content:"[  ] "; font-family:'JetBrains Mono',Consolas,monospace; font-size:8.5pt}
+
+  /* ---- structural ---- */
+  section{break-inside:auto}
+  .page-break{break-before:page; page-break-before:always}
+  .doc-foot{border-top:.75pt solid var(--rule); margin-top:16pt; padding-top:6pt; font-size:8.5pt; color:var(--muted)}
+  .doc-foot p{margin:0}
+  .toc li{margin-bottom:2pt}
+  .toc .lvl2{padding-left:14pt; color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="doc-head">
+  <div class="org">Card Personalization &amp; Key Management Series</div>
+  <h1>Integrating Mastercard and Visa Card Issuance into Entrust Infrastructure</h1>
+  <p class="subtitle">Preparation and configuration guide for Entrust Key Manager, EMV Profile Manager, and Card Wizard</p>
+</div>
+
+<table class="control">
+  <tr><th>Document title</th><td>Integrating Mastercard and Visa Card Issuance into Entrust Infrastructure</td></tr>
+  <tr><th>Document type</th><td>Implementation guide / operational procedure</td></tr>
+  <tr><th>Prepared by</th><td>MinThutaSawNaing</td></tr>
+  <tr><th>Version</th><td>1.0</td></tr>
+  <tr><th>Status</th><td>Released</td></tr>
+  <tr><th>Applies to</th><td>Mastercard and Visa card issuance programs</td></tr>
+  <tr><th>Software components</th><td>Entrust Key Manager Portal, EMV Profile Manager Portal, Card Wizard Portal, nShield HSM</td></tr>
+  <tr><th>Intended audience</th><td>Payment scheme engineers, HSM Security Officers, bank HOST operators</td></tr>
+</table>
+
+<h2>Contents</h2>
+<ol class="toc">
+  <li>Purpose and Scope</li>
+  <li>Prerequisites</li>
+  <li>Procedure
+    <ol class="lvl2">
+      <li>Create separate token tables</li>
+      <li>Generate the issuer key pair (Issuer_PK / Issuer_SK)</li>
+      <li>Generate and submit the certification authority request</li>
+      <li>Import the CA certificate and the issuer certificate</li>
+      <li>Import the required keys into the token table</li>
+      <li>Import the EMV profile and PQDF tool files</li>
+    </ol>
+  </li>
+  <li>Verification Checklist</li>
+  <li>Known Failure Modes and Mitigations</li>
+  <li>Revision History</li>
+</ol>
+
+<h2 class="page-break">1. Purpose and Scope</h2>
+<p>This document describes the procedure for preparing and configuring the Entrust software stack so that a bank can issue
+Mastercard or Visa card products. The work is primarily a key ceremony: the correct keys must be created in the correct token
+table with the correct attributes, and the correct certificates must be imported in the correct sequence.</p>
+<p>The complete procedure is summarised below:</p>
+<pre>Create token tables  ->  Generate issuer key pair  ->  Build CA request (ZIP)
+     ->  Bank submits request to Mastercard  ->  Issuer certificate (.cEF) returned
+     ->  Import CA certificate (.hep + .sep)  ->  Import issuer certificate (.cEF)
+     ->  Import request/session keys (2DES, two components)
+     ->  Import EMV profile and PQDF tool files  ->  Ready for issuance</pre>
+<p>Approximately 50 per cent of the integration effort is complete once the CA certificate and the issuer certificate have been
+imported successfully. The remaining work consists of importing the operational keys and the EMV profile files.</p>
+
+<h2>2. Prerequisites</h2>
+<h3>2.1 Entrust portals used</h3>
+<p>All three portals of the Entrust ecosystem are used in this procedure.</p>
+<table>
+  <tr><th class="num">No.</th><th>Portal</th><th>Role in this procedure</th></tr>
+  <tr><td class="num">1</td><td>Key Manager Portal</td><td>Token tables, key pairs, certification authority requests, certificate and key imports</td></tr>
+  <tr><td class="num">2</td><td>EMV Profile Manager Portal</td><td>EMV kernel and profile configuration for the card applet</td></tr>
+  <tr><td class="num">3</td><td>Card Wizard Portal</td><td>Card personalization workflow and PQDF tool-file generation</td></tr>
+</table>
+
+<h3>2.2 Conditions to confirm with the client before starting</h3>
+<ul>
+  <li>The client operates <strong>separate token tables for testing (UAT) and production (live)</strong>; refer to section 3.1.</li>
+  <li>The bank's <strong>BIN number</strong> is available. The BIN is used as the key owner.</li>
+  <li>A bank <strong>HOST operator</strong> is available to generate 2DES keys <strong>with two key components</strong>.</li>
+  <li>Access to the <strong>Mastercard portal</strong> is available in order to download the <code>.hep</code> and <code>.sep</code> files.</li>
+</ul>
+
+<h2 class="page-break">3. Procedure</h2>
+
+<h3>3.1 Create separate token tables</h3>
+<p>Some clients store all key material in a single token table. This is workable but not advisable, because test and production
+material are then held in the same container. Two separate token tables must be created: one for testing (UAT) and one for
+production (live).</p>
+<p>Create a new token table from the Key Manager Portal:</p>
+<pre>Entrust Key Manager Portal
+  Setup
+    HSM Configurations
+      Right-click the HSM  ->  Login
+        Create a new token table  ->  Assign a name</pre>
+<p>The token table is created once it appears in the HSM tree.</p>
+
+<h3>3.2 Generate the issuer key pair (Issuer_PK / Issuer_SK)</h3>
+<p>This step creates the Issuer Public Key (Issuer_PK), which is used to build the certification authority request, and the
+matching Issuer Private Key (Issuer_SK).</p>
+<div class="note warning"><span class="lbl">Critical.</span> This is the most error-prone step of the entire integration; approximately
+80 per cent of certification authority requests fail because of incorrect parameters at this point. Verify every attribute before
+generating the keys.</div>
+<p>Navigate as follows and apply the parameters in the table below:</p>
+<pre>Key Manager Portal
+  Home
+    Select the correct token table  ->  Login
+      Log in as Security Officer (SO)
+        Generate Key Pair (side bar)  ->  Apply the parameters below</pre>
+<table>
+  <tr><th>Parameter</th><th>Value</th><th>Comment</th></tr>
+  <tr><td>Key type</td><td>Any RSA-based key type</td><td>Naming depends on the HSM key-type set</td></tr>
+  <tr><td>Key length</td><td>1976 bits</td><td>As specified for Mastercard in this procedure</td></tr>
+  <tr><td>Owner</td><td>The bank's BIN number</td><td>Binds the key material to the issuer identity</td></tr>
+  <tr><td>Version</td><td><code>06</code> = live, <code>EF</code> = UAT</td><td>The version field identifies the environment</td></tr>
+  <tr><td>Usages</td><td>Encrypt, Wrap, Verify</td><td>All three usages are required</td></tr>
+  <tr><td>Attributes</td><td>Extractable, Exportable, Deletable</td><td>All three attributes are required</td></tr>
+  <tr><td>Exponent</td><td><code>03</code></td><td>Standard RSA public exponent</td></tr>
+</table>
+<div class="note"><span class="lbl">Note.</span> Issuer_PK and Issuer_SK are generated with an identical procedure and identical
+parameters; only the key name differs.</div>
+
+<h3>3.3 Generate and submit the certification authority request</h3>
+<p>Generate the certification authority request that will be submitted to Mastercard:</p>
+<pre>Key Manager Portal
+  Certificates
+    Request a Certificate
+      Mastercard
+        Select the Issuer Public Key created in section 3.2
+          Generate Request Certificate  ->  (ZIP file)</pre>
+<p>The request is transferred as follows:</p>
+<ol>
+  <li>Entrust generates the request as a ZIP archive.</li>
+  <li>The ZIP archive is handed to the bank, which submits it to Mastercard.</li>
+  <li>Mastercard returns the issuer certificate as a <code>.cEF</code> file.</li>
+</ol>
+<div class="note warning"><span class="lbl">Important.</span> The <code>.cEF</code> file on its own is not sufficient to go live with
+Mastercard. Two further files must also be obtained; both are downloaded from the Mastercard portal. This is a common
+misunderstanding at banks.</div>
+<table>
+  <tr><th>Artifact</th><th>Format</th><th>Source</th><th>Purpose</th></tr>
+  <tr><td>Issuer certificate</td><td><code>.cEF</code></td><td>Mastercard reply to the CA request</td><td>Imported as the issuer certificate (section 3.4)</td></tr>
+  <tr><td>Hardware encryption program</td><td><code>.hep</code></td><td>Download from the Mastercard portal</td><td>Used to build the CA certificate in Entrust (section 3.4)</td></tr>
+  <tr><td>Security program</td><td><code>.sep</code></td><td>Download from the Mastercard portal</td><td>Used to build the CA certificate in Entrust (section 3.4)</td></tr>
+</table>
+<p>All three files are required: <code>.cEF</code>, <code>.hep</code>, and <code>.sep</code>.</p>
+
+<h3>3.4 Import the CA certificate and the issuer certificate</h3>
+<p>Once all three files have been received, import them into Entrust in the following order.</p>
+<h4>Step 1 — CA certificate (HEP and SEP)</h4>
+<pre>Key Manager Portal
+  Import Certificate
+    CA Certificate
+      Select both the .hep and the .sep file  ->  Import</pre>
+<h4>Step 2 — Issuer certificate</h4>
+<pre>Key Manager Portal
+  Import Certificate
+    Issuer Certificate
+      Select the .cEF file  ->  Import</pre>
+<div class="note"><span class="lbl">Note.</span> Once both imports have completed successfully, approximately 50 per cent of the
+integration is finished.</div>
+
+<h3>3.5 Import the required keys into the token table</h3>
+<p>The next stage is to request and import the operational keys (request and session keys) into the token table. Entrust reports
+which keys are required; this list is passed to the bank, which generates the keys with its HOST.</p>
+<div class="note warning"><span class="lbl">Critical.</span> Instruct the bank to generate 2DES keys with two components. Entrust
+requires at least two key components in order to import a key.</div>
+<p>When the key components have been received, import them as follows:</p>
+<pre>Key Manager Portal
+  Import Secret Key or Key Pair
+    Import Key with Components
+      Enter the plain key components
+        Enter the components a second time  ->  Generate Key</pre>
+
+<h3>3.6 Import the EMV profile and PQDF tool files</h3>
+<p>Once the keys are in place, Entrust provides the following deliverables:</p>
+<table>
+  <tr><th>Deliverable</th><th>Purpose</th></tr>
+  <tr><td>EMV profile file</td><td>Configuration of the card applet and kernel</td></tr>
+  <tr><td>PQDF tool files</td><td>Personalization data tool files used for card issuance</td></tr>
+</table>
+<p>Both are imported by following the guidelines supplied with the files.</p>
+<div class="note"><span class="lbl">Note.</span> Minor adjustments to the configuration files are normally required to match the
+customer's card design and applet requirements before the first production run.</div>
+
+<h2 class="page-break">4. Verification Checklist</h2>
+<p>The integration may be signed off only when every item below has been confirmed.</p>
+<ul class="plain">
+  <li>Two token tables exist: one for UAT and one for production.</li>
+  <li>Issuer_PK and Issuer_SK were generated with the correct BIN owner, version (<code>06</code> / <code>EF</code>), usages, attributes, and exponent <code>03</code>.</li>
+  <li>The CA request ZIP file was generated and handed to the bank.</li>
+  <li>The bank submitted the request and Mastercard returned the issuer certificate (<code>.cEF</code>).</li>
+  <li>The <code>.hep</code> and <code>.sep</code> files were downloaded from the Mastercard portal.</li>
+  <li>The CA certificate was imported (both <code>.hep</code> and <code>.sep</code>).</li>
+  <li>The issuer certificate was imported (<code>.cEF</code>).</li>
+  <li>The required keys were requested from the bank as 2DES keys with two components each.</li>
+  <li>The keys were imported using Import Key with Components (components entered twice).</li>
+  <li>The EMV profile was imported.</li>
+  <li>The PQDF tool files were imported and tuned for the customer's cards.</li>
+</ul>
+
+<h2>5. Known Failure Modes and Mitigations</h2>
+<table>
+  <tr><th class="num">No.</th><th>Failure mode</th><th>Consequence</th><th>Mitigation</th></tr>
+  <tr><td class="num">1</td><td>Incorrect key-pair parameters (usages, attributes, exponent, or version)</td><td>Approximately 80 per cent of CA request failures originate here</td><td>Re-verify the parameter table in section 3.2 before generating the keys</td></tr>
+  <tr><td class="num">2</td><td>Only the <code>.cEF</code> file is obtained</td><td>The integration stalls at personalization</td><td>Obtain all three files: <code>.cEF</code>, <code>.hep</code>, and <code>.sep</code></td></tr>
+  <tr><td class="num">3</td><td>A single token table is shared by UAT and production</td><td>Operationally impractical; test material is exposed to production processes</td><td>Always create separate token tables (section 3.1)</td></tr>
+  <tr><td class="num">4</td><td>The bank generates keys with a single component</td><td>Entrust cannot import the key</td><td>Instruct the bank to generate 2DES keys with two components</td></tr>
+  <tr><td class="num">5</td><td>EMV or PQDF files are imported without tuning</td><td>Cards behave incorrectly for the specific customer design</td><td>Follow the vendor guidelines and tune the files per customer card</td></tr>
+</table>
+
+<h2>6. Revision History</h2>
+<table>
+  <tr><th class="num">Rev.</th><th>Date</th><th>Description</th><th>Author</th></tr>
+  <tr><td class="num">1.0</td><td>Initial release</td><td>First issue of the implementation guide, prepared from field notes covering Entrust Key Manager, EMV Profile Manager, and Card Wizard.</td><td>MinThutaSawNaing</td></tr>
+</table>
+
+<div class="doc-foot">
+  <p>Integrating Mastercard and Visa Card Issuance into Entrust Infrastructure — Implementation Guide, version 1.0.</p>
+  <p>Prepared by MinThutaSawNaing. Mastercard and Visa are trademarks of their respective owners.</p>
+</div>
+
+
+
+</body>
+</html>
