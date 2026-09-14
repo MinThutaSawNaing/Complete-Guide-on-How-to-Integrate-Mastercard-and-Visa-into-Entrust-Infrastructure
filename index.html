@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complete Guide — Integrating Mastercard &amp; Visa into Entrust Infrastructure</title>
+<meta name="description" content="A hands-on field guide for preparing and configuring the Entrust software stack for Mastercard or Visa issuance — token tables, issuer key pairs, CA requests, and EMV profiles.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mc-red:#eb001b; --mc-amber:#ff5f00; --visa-blue:#1a1f71; --visa-gold:#f7b600;
+  --gold:#c9a227; --radius:14px; --maxw:1080px;
+  --font-body:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-code:'JetBrains Mono','Cascadia Code',Consolas,monospace;
+}
+[data-theme="dark"]{
+  --bg:#0a1120; --bg2:#0e1729; --panel:#131f37; --panel2:#182742;
+  --text:#e6edf7; --muted:#8ea1bd; --border:#24365a;
+  --accent:#58a6ff; --good:#3fb950; --warn:#d29922; --bad:#f85149;
+  --code-bg:#0d1526; --shadow:0 10px 30px rgba(0,0,0,.45);
+  --hero-grad:linear-gradient(135deg,#0b1f3a 0%,#153e75 45%,#1a1f71 100%);
+}
+[data-theme="light"]{
+  --bg:#f4f7fb; --bg2:#eef2f8; --panel:#ffffff; --panel2:#f7f9fd;
+  --text:#1c2430; --muted:#5b6b80; --border:#dbe3ef;
+  --accent:#0b5cad; --good:#1a7f37; --warn:#9a6700; --bad:#cf222e;
+  --code-bg:#f0f4fa; --shadow:0 10px 25px rgba(20,40,80,.10);
+  --hero-grad:linear-gradient(135deg,#0b1f3a 0%,#153e75 45%,#1a1f71 100%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);line-height:1.65;transition:background .3s,color .3s}
+::selection{background:var(--mc-amber);color:#fff}
+
+/* ---------- progress bar + top nav ---------- */
+#progress{position:fixed;top:0;left:0;height:4px;width:0;z-index:1000;
+  background:linear-gradient(90deg,var(--mc-red),var(--mc-amber),var(--visa-gold),var(--accent));transition:width .1s linear}
+nav{position:fixed;top:4px;left:0;right:0;z-index:900;backdrop-filter:blur(14px);
+  background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--border)}
+.nav-inner{max-width:var(--maxw);margin:0 auto;display:flex;align-items:center;gap:14px;padding:10px 20px}
+.brand{font-weight:800;font-size:15px;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text)}
+.brand .cube{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--mc-red),var(--mc-amber));
+  display:grid;place-items:center;font-size:14px;color:#fff}
+.nav-links{display:flex;gap:4px;margin-left:auto;align-items:center;flex-wrap:wrap}
+.nav-links a{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;padding:7px 11px;border-radius:8px;transition:.2s}
+.nav-links a:hover{color:var(--text);background:var(--panel2)}
+.theme-btn{cursor:pointer;border:1px solid var(--border);background:var(--panel);color:var(--text);
+  width:38px;height:38px;border-radius:10px;font-size:17px;display:grid;place-items:center;transition:.25s}
+.theme-btn:hover{transform:rotate(20deg) scale(1.08);border-color:var(--accent)}
+
+/* ---------- hero ---------- */
+.hero{background:var(--hero-grad);color:#fff;padding:150px 20px 90px;position:relative;overflow:hidden;text-align:center}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;filter:blur(70px);opacity:.35;pointer-events:none}
+.hero::before{width:420px;height:420px;background:var(--mc-red);top:-140px;left:-120px;animation:float 14s ease-in-out infinite}
+.hero::after{width:460px;height:460px;background:var(--visa-gold);bottom:-180px;right:-120px;animation:float 18s ease-in-out infinite reverse}
+@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,30px)}}
+.hero .inner{position:relative;z-index:2;max-width:900px;margin:0 auto}
+.badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:26px}
+.badge{font-family:var(--font-code);font-size:12px;font-weight:700;letter-spacing:.8px;padding:7px 16px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);backdrop-filter:blur(6px)}
+.badge.mc{background:linear-gradient(90deg,var(--mc-red),var(--mc-amber));border:none}
+.badge.visa{background:rgba(255,255,255,.92);color:var(--visa-blue);border:none}
+.badge.en{background:rgba(201,162,39,.92);color:#201500;border:none}
+.hero h1{font-size:clamp(30px,5vw,52px);font-weight:900;letter-spacing:-1.2px;line-height:1.15;margin-bottom:18px}
+.hero h1 .grad{background:linear-gradient(90deg,#ffd166,#ff9e5e,#ff6b6b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.sub{font-size:clamp(15px,2vw,18px);color:#c9d6ea;max-width:720px;margin:0 auto 30px}
+.hero .byline{font-family:var(--font-code);font-size:13px;color:#93a9cc}
+.hero .cta{margin-top:36px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;padding:13px 26px;border-radius:12px;
+  text-decoration:none;transition:.25s;border:1px solid transparent}
+.btn.primary{background:linear-gradient(90deg,var(--mc-red),var(--mc-amber));color:#fff;box-shadow:0 8px 24px rgba(235,0,27,.35)}
+.btn.primary:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(255,95,0,.45)}
+.btn.ghost{border-color:rgba(255,255,255,.4);color:#fff}
+.btn.ghost:hover{background:rgba(255,255,255,.12);transform:translateY(-3px)}
+
+/* ---------- stats strip ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;max-width:var(--maxw);
+  margin:-46px auto 0;position:relative;z-index:5;padding:0 20px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow)}
+.stat .num{font-size:30px;font-weight:900;letter-spacing:-1px;background:linear-gradient(90deg,var(--mc-red),var(--mc-amber));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+
+/* ---------- layout ---------- */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:70px 20px 30px;display:grid;grid-template-columns:230px 1fr;gap:44px}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}.toc{display:none}}
+main{min-width:0}
+.toc{position:sticky;top:96px;align-self:start;font-size:13px;max-height:calc(100vh - 120px);overflow:auto}
+.toc h4{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:12px}
+.toc a{display:block;padding:6px 12px;color:var(--muted);text-decoration:none;border-left:2px solid var(--border);
+  font-weight:600;transition:.2s;line-height:1.4}
+.toc a:hover{color:var(--text)}
+.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2);border-radius:0 8px 8px 0}
+
+/* ---------- sections ---------- */
+section{margin-bottom:64px}
+.kicker{font-family:var(--font-code);font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--mc-amber)}
+h2.title{font-size:clamp(24px,3.4vw,34px);font-weight:900;letter-spacing:-.8px;margin:6px 0 10px}
+h2.title::after{content:"";display:block;width:64px;height:4px;border-radius:4px;margin-top:12px;
+  background:linear-gradient(90deg,var(--mc-red),var(--mc-amber))}
+h3{font-weight:800;margin:26px 0 10px;font-size:18px}
+p{margin-bottom:14px}
+p.lead{font-size:17px;color:var(--muted)}
+.portal-tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 13px;border-radius:999px;
+  background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-bottom:14px}
+
+/* ---------- cards & callouts ---------- */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin:18px 0;box-shadow:var(--shadow)}
+.callout{border-left:5px solid var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel));
+  border-radius:0 var(--radius) var(--radius) 0;padding:16px 20px;margin:20px 0}
+.note{border-left:5px solid var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel));
+  border-radius:0 var(--radius) var(--radius) 0;padding:16px 20px;margin:20px 0}
+.tip{border-left:5px solid var(--good);background:color-mix(in srgb,var(--good) 9%,var(--panel));
+  border-radius:0 var(--radius) var(--radius) 0;padding:16px 20px;margin:20px 0}
+
+/* ---------- tables ---------- */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);margin:18px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th{background:linear-gradient(90deg,#0b1f3a,#1a1f71);color:#fff;text-align:left;padding:12px 16px;font-weight:700;letter-spacing:.3px}
+td{padding:12px 16px;border-top:1px solid var(--border);vertical-align:top}
+tr:nth-child(even) td{background:var(--panel2)}
+td code,p code,li code{font-family:var(--font-code);font-size:.88em;background:var(--code-bg);border:1px solid var(--border);
+  padding:2px 7px;border-radius:6px;color:var(--mc-amber)}
+
+/* ---------- code / nav trees ---------- */
+.codeblock{position:relative;margin:18px 0}
+.codeblock pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;
+  font-family:var(--font-code);font-size:13.5px;line-height:1.7;overflow-x:auto;color:var(--text)}
+.copy-btn{position:absolute;top:10px;right:10px;font-family:var(--font-body);font-size:11px;font-weight:700;cursor:pointer;
+  background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;transition:.2s;opacity:0}
+.codeblock:hover .copy-btn{opacity:1}
+.copy-btn:hover{color:var(--text);border-color:var(--accent)}
+.copy-btn.copied{color:var(--good);border-color:var(--good)}
+
+/* ---------- pipeline ---------- */
+.pipeline{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:22px 0}
+.pipe-step{flex:1 1 150px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;
+  font-size:12.5px;font-weight:700;display:flex;flex-direction:column;gap:6px;position:relative;transition:.3s}
+.pipe-step:hover{transform:translateY(-5px);border-color:var(--mc-amber);box-shadow:var(--shadow)}
+.pipe-step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;color:#fff;
+  background:linear-gradient(135deg,var(--mc-red),var(--mc-amber))}
+.pipe-step.done .n{background:linear-gradient(135deg,#1a7f37,#3fb950)}
+.pipe-step small{color:var(--muted);font-weight:500}
+.arrow{align-self:center;color:var(--muted);font-weight:900}
+
+/* ---------- checklist ---------- */
+.checklist{list-style:none;margin:14px 0}
+.checklist li{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;margin:8px 0;background:var(--panel);
+  border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:.25s;font-size:14.5px;user-select:none}
+.checklist li:hover{border-color:var(--accent)}
+.checklist li input{width:19px;height:19px;margin-top:2px;accent-color:var(--good);cursor:pointer;flex-shrink:0}
+.checklist li.checked{opacity:.62;text-decoration:line-through;border-color:var(--good)}
+.progress-track{height:8px;background:var(--panel2);border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:10px 0 4px}
+.progress-fill{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--mc-red),var(--mc-amber),var(--good));transition:width .4s}
+.progress-label{font-family:var(--font-code);font-size:12px;color:var(--muted)}
+
+/* ---------- footer / misc ---------- */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:none}
+#toTop{position:fixed;bottom:26px;right:26px;width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--mc-red),var(--mc-amber));color:#fff;font-size:19px;box-shadow:var(--shadow);
+  opacity:0;pointer-events:none;transition:.3s;z-index:800}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{transform:translateY(-4px)}
+footer{border-top:1px solid var(--border);background:var(--bg2);padding:50px 20px;text-align:center;margin-top:40px}
+footer .schemes{font-size:24px;letter-spacing:8px;margin-bottom:12px}
+footer p{font-size:13.5px;color:var(--muted)}
+footer a{color:var(--accent);text-decoration:none;font-weight:700}
+kbd{font-family:var(--font-code);background:var(--code-bg);border:1px solid var(--border);border-bottom-width:3px;
+  border-radius:6px;padding:2px 8px;font-size:12px}
+
+
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<nav>
+  <div class="nav-inner">
+    <a class="brand" href="#top"><span class="cube">⚡</span>Entrust&nbsp;·&nbsp;Mastercard&nbsp;&amp;&nbsp;Visa Guide</a>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#step2">Key Pair</a>
+      <a href="#step3">CA Request</a>
+      <a href="#step4">Certificates</a>
+      <a href="#checklist">Checklist</a>
+      <a href="#pitfalls">Pitfalls</a>
+      <button class="theme-btn" id="themeBtn" title="Toggle dark / light mode" aria-label="Toggle theme">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="inner">
+    <div class="badges">
+      <span class="badge mc">MASTERCARD</span>
+      <span class="badge visa">VISA</span>
+      <span class="badge en">ENTRUST KEY MANAGER</span>
+      <span class="badge">EMV</span>
+      <span class="badge">nShield HSM</span>
+    </div>
+    <h1>The Complete Guide to Integrating<br><span class="grad">Mastercard &amp; Visa</span> into<br>Entrust Infrastructure</h1>
+    <p class="sub">A hands-on field guide for preparing and configuring the Entrust software stack for card issuance —
+      token tables, issuer key pairs, CA requests, certificate imports, session keys, and EMV profiles.</p>
+    <p class="byline">prepared by MinThutaSawNaing · Card Personalization &amp; Key Management Series</p>
+    <div class="cta">
+      <a class="btn primary" href="#step1">🚀 Start the Guide</a>
+      <a class="btn ghost" href="#checklist">📋 Jump to Checklist</a>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="num" data-count="3">0</div><div class="lbl">Entrust Portals</div></div>
+  <div class="stat"><div class="num" data-count="6">0</div><div class="lbl">Integration Steps</div></div>
+  <div class="stat"><div class="num" data-count="3">0</div><div class="lbl">Mastercard Files (.cEF/.hep/.sep)</div></div>
+  <div class="stat"><div class="num" data-suffix="%" data-count="80">0</div><div class="lbl">CA Failures from Key Pair Step</div></div>
+</div>
+
+<div class="wrap">
+  <aside class="toc" id="toc">
+    <h4>Contents</h4>
+    <a href="#overview">Overview</a>
+    <a href="#portals">Before You Start</a>
+    <a href="#step1">1 · Token Table</a>
+    <a href="#step2">2 · Issuer Key Pair</a>
+    <a href="#step3">3 · CA Request</a>
+    <a href="#step4">4 · Import Certificates</a>
+    <a href="#step5">5 · Import Keys</a>
+    <a href="#step6">6 · EMV &amp; PQDF</a>
+    <a href="#checklist">Delivery Checklist</a>
+    <a href="#pitfalls">Common Pitfalls</a>
+  </aside>
+
+  <main>
+
+    <section id="overview" class="reveal">
+      <div class="kicker">Introduction</div>
+      <h2 class="title">🔎 Overview</h2>
+      <p class="lead">Bringing a bank onto <strong>Mastercard</strong> or <strong>Visa</strong> rails using
+        <strong>Entrust</strong> (nShield HSM + Key Manager) is mostly a <em>key-ceremony</em> discipline:
+        the right keys, in the right token table, with the right attributes — followed by the right certificates, in the right order.</p>
+      <h3>The full happy path</h3>
+      <div class="pipeline">
+        <div class="pipe-step"><span class="n">1</span>Token Tables<small>UAT + LIVE, separated</small></div><div class="arrow">→</div>
+        <div class="pipe-step"><span class="n">2</span>Issuer Key Pair<small>Issuer_PK / Issuer_SK</small></div><div class="arrow">→</div>
+        <div class="pipe-step"><span class="n">3</span>CA Request<small>ZIP → bank → Mastercard</small></div><div class="arrow">→</div>
+        <div class="pipe-step"><span class="n">4</span>Import Certs<small>.cEF + .hep + .sep · 50% done</small></div><div class="arrow">→</div>
+        <div class="pipe-step"><span class="n">5</span>Import Keys<small>2DES · two components</small></div><div class="arrow">→</div>
+        <div class="pipe-step done"><span class="n">6</span>EMV + PQDF<small>🎉 ready for issuance</small></div>
+      </div>
+      <div class="note">⏱ Roughly <strong>50% of the mission is complete</strong> once the CA and issuer certificates are imported. The remaining keys and EMV profile files finish the job.</div>
+    </section>
+
+    <section id="portals" class="reveal">
+      <div class="kicker">Prerequisites</div>
+      <h2 class="title">🧭 Before You Start — The Three Entrust Portals</h2>
+      <p>Our mission uses <strong>all three</strong> portals in the Entrust ecosystem:</p>
+      <div class="tbl-wrap"><table>
+        <tr><th>#</th><th>Portal</th><th>Primary Role in This Guide</th></tr>
+        <tr><td>1</td><td>🔐 <strong>Key Manager Portal</strong></td><td>Token tables, key pairs, CA requests, certificate &amp; key imports</td></tr>
+        <tr><td>2</td><td>🧩 <strong>EMV Profile Manager Portal</strong></td><td>EMV kernel / profile configuration for the card applet</td></tr>
+        <tr><td>3</td><td>💳 <strong>Card Wizard Portal</strong></td><td>Card personalization workflow &amp; tool-file generation (PQDF)</td></tr>
+      </table></div>
+      <h3>Client-side prerequisites to confirm first</h3>
+      <div class="card"><ul style="list-style:none">
+        <li>✔ Client maintains <strong>separate token tables for Testing (UAT) and Live (PROD)</strong> — see Step 1</li>
+        <li>✔ The bank's <strong>BIN number</strong> is available (it becomes the key <em>Owner</em>)</li>
+        <li>✔ A bank <strong>HOST</strong> operator is available to generate 2DES keys <strong>with two key components</strong></li>
+        <li>✔ Access to the <strong>Mastercard Portal</strong> to download the <code>.hep</code> and <code>.sep</code> files</li>
+      </ul></div>
+    </section>
+
+    <section id="step1" class="reveal">
+      <div class="kicker">Step 1 of 6</div>
+      <h2 class="title">🔐 Token Table Configuration</h2>
+      <div class="portal-tag">🔐 Key Manager Portal · Setup → HSM Configurations</div>
+      <p>Some clients run <strong>everything in one token table</strong>. It is not a bad thing, but it is
+        <strong>not practical</strong> — you want a clean blast-radius separation between testing and production material.</p>
+      <div class="note"><strong>Rule of thumb:</strong> create <strong>two separate token tables</strong> — one for <strong>Testing (UAT)</strong>, one for <strong>Live</strong>.</div>
+      <h3>To create a new token table</h3>
+      <div class="codeblock"><button class="copy-btn">Copy</button><pre>Entrust Key Manager Portal
+ └─ Setup
+     └─ HSM Configurations
+         └─ Right-click on the HSM  →  Login
+             └─ Create a New Token Table  →  Name the table</pre></div>
+      <p>✅ When the table appears in the HSM tree, the first milestone is done.</p>
+    </section>
+
+    <section id="step2" class="reveal">
+      <div class="kicker">Step 2 of 6 · Most Critical</div>
+      <h2 class="title">🗝️ Generate the Issuer Key Pair (Issuer_PK / Issuer_SK)</h2>
+      <div class="portal-tag">🔐 Key Manager Portal · Home → Generate Key Pair</div>
+      <p>Next, generate the <strong>Issuer Public Key (Issuer_PK)</strong> — the key used to build the CA request —
+        and the matching <strong>Issuer Private Key (Issuer_SK)</strong>.</p>
+      <div class="callout">⚠️ <strong>This is the most critical step in the entire integration — roughly 80% of CA requests fail
+        because of mistakes made here.</strong> Double-check every attribute before clicking <em>Generate</em>.</div>
+      <h3>Navigation</h3>
+      <div class="codeblock"><button class="copy-btn">Copy</button><pre>Key Manager Portal
+ └─ Home
+     └─ Choose the correct token table  →  Login
+         └─ Login as Security Officer (SO)
+             └─ "Generate Key Pair" (side bar)  →  Apply the parameters below</pre></div>
+      <h3>Required key parameters (Mastercard)</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+        <tr><td>Key Type</td><td>Any <strong>RSA-based</strong> key type</td><td>Per your HSM's key-type naming</td></tr>
+        <tr><td>Key Length</td><td><strong>1976 bits</strong></td><td>As specified for Mastercard in this guide</td></tr>
+        <tr><td>Owner</td><td>The bank's <strong>BIN number</strong></td><td>Ties the key material to the issuer identity</td></tr>
+        <tr><td>Version</td><td><code>06</code> = LIVE · <code>EF</code> = UAT</td><td>Version encodes the environment</td></tr>
+        <tr><td>Usages</td><td><strong>Encrypt, Wrap, Verify</strong></td><td>Select all three</td></tr>
+        <tr><td>Attributes</td><td><strong>Extractable, Exportable, Deletable</strong></td><td>Select all three</td></tr>
+        <tr><td>Exponent</td><td><code>03</code></td><td>Standard RSA public exponent</td></tr>
+      </table></div>
+      <div class="note">📝 <strong>Generate both keys with the same procedure</strong> — <code>Issuer_PK</code> and
+        <code>Issuer_SK</code> follow the identical guide and identical parameters; only the <strong>name</strong> differs.</div>
+    </section>
+
+    <section id="step3" class="reveal">
+      <div class="kicker">Step 3 of 6</div>
+      <h2 class="title">📨 Create &amp; Submit the CA Request</h2>
+      <div class="portal-tag">🔐 Key Manager Portal → 🌐 Mastercard Portal</div>
+      <p>Create the certificate authority request that will be submitted to Mastercard:</p>
+      <div class="codeblock"><button class="copy-btn">Copy</button><pre>Key Manager Portal
+ └─ Certificates
+     └─ Request a Certificate
+         └─ Mastercard
+             └─ Choose the Issuer Public Key created in Step 2
+                 └─ Generate Request Certificate  →  (ZIP output)</pre></div>
+      <h3>Hand-off flow</h3>
+      <div class="card">
+        <p><strong>1.</strong> 📦 Entrust produces the CA request as a <strong>ZIP</strong> archive.<br>
+           <strong>2.</strong> 🏦 Give the ZIP to the <strong>bank</strong>; the bank submits it to <strong>Mastercard</strong>.<br>
+           <strong>3.</strong> 📨 Mastercard replies with the <strong>Issuer Certificate</strong> (<code>.cEF</code> file).</p>
+      </div>
+      <div class="callout">🚨 <strong>Most banks mistakenly believe the <code>.cEF</code> is everything they need to go live with Mastercard.
+        It is not.</strong> You still need two additional files — both downloadable from the Mastercard Portal.</div>
+      <div class="tbl-wrap"><table>
+        <tr><th>Artifact</th><th>Format</th><th>Where It Comes From</th><th>Used For</th></tr>
+        <tr><td>Issuer Certificate</td><td><code>.cEF</code></td><td>Mastercard reply to the CA request</td><td>Imported as the issuer certificate (Step 4)</td></tr>
+        <tr><td>Hardware Encryption Program</td><td><code>.hep</code></td><td><strong>Mastercard Portal</strong> download</td><td>Building the CA certificate in Entrust (Step 4)</td></tr>
+        <tr><td>Security Program</td><td><code>.sep</code></td><td><strong>Mastercard Portal</strong> download</td><td>Building the CA certificate in Entrust (Step 4)</td></tr>
+      </table></div>
+      <div class="tip">✅ <strong>Make sure you get all three:</strong> <code>.cEF</code> + <code>.hep</code> + <code>.sep</code>.</div>
+    </section>
+
+    <section id="step4" class="reveal">
+      <div class="kicker">Step 4 of 6 · The 50% Milestone</div>
+      <h2 class="title">📥 Import the CA Certificate &amp; Issuer Certificate</h2>
+      <div class="portal-tag">🔐 Key Manager Portal · Import Certificate</div>
+      <p>Once all three files are in hand, import them into Entrust <strong>in this order</strong>:</p>
+      <h3>1 · Import the CA certificate (HEP + SEP)</h3>
+      <div class="codeblock"><button class="copy-btn">Copy</button><pre>Key Manager Portal
+ └─ Import Certificate
+     └─ CA Certificate
+         └─ Choose both .hep and .sep  →  Import</pre></div>
+      <h3>2 · Import the Issuer Certificate</h3>
+      <div class="codeblock"><button class="copy-btn">Copy</button><pre>Key Manager Portal
+ └─ Import Certificate
+     └─ Issuer Certificate
+         └─ Choose .cEF  →  Import</pre></div>
+      <div class="tip">🎯 <strong>At this point, 50% of the integration is complete.</strong></div>
+    </section>
+
+    <section id="step5" class="reveal">
+      <div class="kicker">Step 5 of 6</div>
+      <h2 class="title">🔑 Import the Required Keys into the Token Table</h2>
+      <div class="portal-tag">🔐 Key Manager Portal → 🏦 Bank HOST</div>
+      <p>The next phase is requesting and importing the <strong>necessary operational keys</strong> (request / session keys)
+        into the token table.</p>
+      <div class="tip">💡 <strong>Don't worry about guessing which keys you need</strong> — Entrust will tell you exactly which keys
+        must be configured. Once you have the list, pass it to the bank, and the bank generates them with its HOST.</div>
+      <div class="callout">⚠️ <strong>Important instruction for the bank:</strong> request <strong>2DES keys generated with two
+        components</strong> — Entrust requires <strong>at least two key components</strong> to import a key.</div>
+      <h3>Import procedure (once the components arrive)</h3>
+      <div class="codeblock"><button class="copy-btn">Copy</button><pre>Key Manager Portal
+ └─ Import Secret Key or Key Pair
+     └─ Import Key with Components
+         └─ Type in the plain key components
+             └─ Enter the components twice  →  Generate Key</pre></div>
+    </section>
+
+    <section id="step6" class="reveal">
+      <div class="kicker">Step 6 of 6 · Final Mile</div>
+      <h2 class="title">🧩 EMV Profile &amp; PQDF Tool Files</h2>
+      <div class="portal-tag">🧩 EMV Profile Manager Portal · 💳 Card Wizard Portal</div>
+      <p>After the keys are in place, Entrust provides:</p>
+      <div class="tbl-wrap"><table>
+        <tr><th>Deliverable</th><th>Purpose</th></tr>
+        <tr><td>🧩 <strong>EMV Profile file</strong></td><td>Card applet / kernel configuration</td></tr>
+        <tr><td>💳 <strong>PQDF tool files</strong></td><td>Personalization data tool files for card issuance</td></tr>
+      </table></div>
+      <p>These are straightforward to import — simply follow the guidelines shipped with them.</p>
+      <div class="note">🔧 <strong>Tuning tip:</strong> expect to make small adjustments to the configuration files based on
+        <strong>your customer's card design and applet requirements</strong> before the first production run.</div>
+    </section>
+
+    <section id="checklist" class="reveal">
+      <div class="kicker">Sign-off</div>
+      <h2 class="title">📋 Delivery Checklist</h2>
+      <p class="lead">Click items to tick them off — your progress is saved in this browser.</p>
+      <div class="progress-track"><div class="progress-fill" id="checkProgress"></div></div>
+      <div class="progress-label" id="checkLabel">0 / 11 complete</div>
+      <ul class="checklist" id="deliveryChecklist">
+        <li><input type="checkbox"><span><strong>Two token tables</strong> exist — one <strong>UAT</strong>, one <strong>LIVE</strong></span></li>
+        <li><input type="checkbox"><span><strong>Issuer_PK</strong> &amp; <strong>Issuer_SK</strong> generated with the correct BIN owner, version (<code>06</code>/<code>EF</code>), usages, attributes, and exponent <code>03</code></span></li>
+        <li><input type="checkbox"><span><strong>CA request ZIP</strong> generated and handed to the bank</span></li>
+        <li><input type="checkbox"><span>Bank submitted the request; Mastercard returned the <strong>Issuer Certificate (<code>.cEF</code>)</strong></span></li>
+        <li><input type="checkbox"><span><strong><code>.hep</code></strong> and <strong><code>.sep</code></strong> downloaded from the Mastercard Portal</span></li>
+        <li><input type="checkbox"><span><strong>CA certificate imported</strong> (both <code>.hep</code> + <code>.sep</code>)</span></li>
+        <li><input type="checkbox"><span><strong>Issuer certificate imported</strong> (<code>.cEF</code>)</span></li>
+        <li><input type="checkbox"><span>Required keys requested from the bank — <strong>2DES, two components each</strong></span></li>
+        <li><input type="checkbox"><span>Keys imported via <em>Import Key with Components</em> (entered twice)</span></li>
+        <li><input type="checkbox"><span><strong>EMV profile</strong> imported</span></li>
+        <li><input type="checkbox"><span><strong>PQDF tool files</strong> imported &amp; tuned for the customer's cards</span></li>
+      </ul>
+    </section>
+
+    <section id="pitfalls" class="reveal">
+      <div class="kicker">Lessons Learned</div>
+      <h2 class="title">⚠️ Common Pitfalls</h2>
+      <div class="tbl-wrap"><table>
+        <tr><th>#</th><th>Pitfall</th><th>Consequence</th><th>Avoidance</th></tr>
+        <tr><td>1</td><td>Wrong key-pair attributes (usages / attributes / exponent / version)</td><td>❌ <strong>~80% of CA requests fail here</strong></td><td>Re-read the Step 2 parameter table before generating</td></tr>
+        <tr><td>2</td><td>Thinking the <code>.cEF</code> alone is enough</td><td>Integration stalls at personalization</td><td>Remember: you need <code>.cEF</code> <strong>+ <code>.hep</code> + <code>.sep</code></strong></td></tr>
+        <tr><td>3</td><td>One shared token table for UAT &amp; Live</td><td>Operationally impractical; test material leaks into production risk</td><td>Always create separate tables (Step 1)</td></tr>
+        <tr><td>4</td><td>Bank generates keys as a single component</td><td>Entrust <strong>cannot import</strong> the key</td><td>Instruct the bank: <strong>2DES keys with two components</strong></td></tr>
+        <tr><td>5</td><td>Importing EMV/PQDF files without tuning</td><td>Cards misbehave for the specific customer design</td><td>Follow vendor guidelines <strong>and</strong> tune per customer cards</td></tr>
+      </table></div>
+    </section>
+
+  </main>
+</div>
+
+<button id="toTop" title="Back to top" aria-label="Back to top">↑</button>
+
+<footer>
+  <div class="schemes">💳 🏦 🔐</div>
+  <p><strong style="color:var(--text)">Happy issuing! 🎉</strong></p>
+  <p>Written from hands-on field notes for payment-scheme engineers working with Entrust, Mastercard and Visa infrastructure.</p>
+  <p style="margin-top:10px">Made with ❤️ by <a href="https://github.com/MinThutaSawNaing" target="_blank" rel="noopener">MinThutaSawNaing</a>
+  · <a href="https://github.com/MinThutaSawNaing/Complete-Guide-on-How-to-Integrate-Mastercard-and-Visa-into-Entrust-Infrastructure" target="_blank" rel="noopener">View on GitHub</a></p>
+</footer>
+
+<script>
+/* ---------- theme toggle (persisted) ---------- */
+const root = document.documentElement, themeBtn = document.getElementById('themeBtn');
+const savedTheme = localStorage.getItem('entrust-guide-theme');
+if (savedTheme) root.setAttribute('data-theme', savedTheme);
+const syncThemeIcon = () => themeBtn.textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+syncThemeIcon();
+themeBtn.addEventListener('click', () => {
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  localStorage.setItem('entrust-guide-theme', next);
+  syncThemeIcon();
+});
+
+/* ---------- reading progress bar + back-to-top ---------- */
+const bar = document.getElementById('progress'), toTop = document.getElementById('toTop');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+  bar.style.width = pct + '%';
+  toTop.classList.toggle('show', h.scrollTop > 600);
+}, { passive: true });
+toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+/* ---------- scroll-reveal ---------- */
+const revealObs = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add('visible'); revealObs.unobserve(e.target); }
+}), { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+/* ---------- animated counters ---------- */
+const countObs = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const el = e.target, target = +el.dataset.count, suffix = el.dataset.suffix || '', t0 = performance.now();
+  const tick = now => {
+    const p = Math.min((now - t0) / 1200, 1);
+    el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick); countObs.unobserve(el);
+}), { threshold: 0.6 });
+document.querySelectorAll('.stat .num').forEach(el => countObs.observe(el));
+
+/* ---------- TOC scroll-spy ---------- */
+const tocLinks = [...document.querySelectorAll('.toc a')];
+const spy = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+}), { rootMargin: '-25% 0px -65% 0px' });
+tocLinks.forEach(a => { const s = document.querySelector(a.getAttribute('href')); if (s) spy.observe(s); });
+
+/* ---------- copy buttons for code blocks ---------- */
+document.querySelectorAll('.codeblock').forEach(block => {
+  const btn = block.querySelector('.copy-btn'), pre = block.querySelector('pre');
+  btn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(pre.innerText); }
+    catch {
+      const r = document.createRange(); r.selectNode(pre);
+      getSelection().removeAllRanges(); getSelection().addRange(r);
+      document.execCommand('copy'); getSelection().removeAllRanges();
+    }
+    btn.textContent = '✓ Copied'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+  });
+});
+
+/* ---------- interactive checklist (persisted) ---------- */
+const list = document.getElementById('deliveryChecklist');
+const items = [...list.querySelectorAll('li')];
+const fill = document.getElementById('checkProgress'), label = document.getElementById('checkLabel');
+const KEY = 'entrust-gu…list';
+let state = [];
+try { state = JSON.parse(localStorage.getItem(KEY)) || []; } catch { state = []; }
+function render() {
+  const done = items.filter(li => li.classList.contains('checked')).length;
+  fill.style.width = (done / items.length * 100) + '%';
+  label.textContent = done + ' / ' + items.length + ' complete' + (done === items.length ? ' — 🎉 Integration signed off!' : '');
+}
+items.forEach((li, i) => {
+  const box = li.querySelector('input');
+  if (state[i]) { li.classList.add('checked'); box.checked = true; }
+  li.addEventListener('click', () => {
+    li.classList.toggle('checked');
+    box.checked = li.classList.contains('checked');
+    state[i] = box.checked;
+    localStorage.setItem(KEY, JSON.stringify(state));
+    render();
+  });
+});
+render();
+
+</script>
+</body>
+</html>
+
+
